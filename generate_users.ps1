@@ -59,9 +59,9 @@ Write-Host "--- PAROOLI SEADISTUS ---" -ForegroundColor Cyan
 $GlobalPass = Read-Host "Sisesta staatiline parool (vajuta ENTER juhuslike paroolide jaoks)"
 
 if (-not [string]::IsNullOrWhiteSpace($GlobalPass)) {
-    Write-Host "Valitud režiim: Staatiline parool '$GlobalPass'" -ForegroundColor Yellow
+    Write-Host "Valitud: Staatiline parool '$GlobalPass'" -ForegroundColor Yellow
 } else {
-    Write-Host "Valitud režiim: Juhuslikud paroolid" -ForegroundColor Green
+    Write-Host "Valitud: Juhuslikud paroolid" -ForegroundColor Green
 }
 Start-Sleep -Seconds 1
 
