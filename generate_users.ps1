@@ -101,10 +101,3 @@ $UserList | Export-Csv -Path $Failid.OutputFail -Delimiter ";" -NoTypeInformatio
 Write-Host "`n--------------------------------------------------------" -ForegroundColor Cyan
 Write-Host "EDUKAS! Fail salvestatud: $($Failid.OutputFail)" -ForegroundColor Cyan
 Write-Host "--------------------------------------------------------" -ForegroundColor Gray
-
-foreach ($User in $UserList) {
-    $DescShort = if ($User.Kirjeldus.Length -gt 10) { $User.Kirjeldus.Substring(0, 10) + "..." } else { $User.Kirjeldus }
-    # Nüüd on siin ilusasti "Täisnimi" ja see peaks töötama
-    Write-Host "Nimi: $($User.Eesnimi) $($User.Perenimi) | Kasutaja: $($User.Kasutajanimi) | Parool: $($User.Parool) | Info: $DescShort"
-}
-Write-Host "--------------------------------------------------------" -ForegroundColor Gray
