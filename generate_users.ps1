@@ -1,15 +1,14 @@
 <#
 .SYNOPSIS
     Genereerib 5 juhuslikku kasutajakontot valikuga määrata ühine staatiline parool.
-    
-.DESCRIPTION
-    See skript loeb nimed ja kirjeldused tekstifailidest, genereerib juhuslikud kasutajad,
-    puhastab kasutajanimed (eemaldab täpitähed/tühikud) ja ekspordib andmed CSV faili.
-    Võimaldab valida, kas määrata kõigile üks kindel parool või genereerida igale unikaalne.
 #>
 
+# --- SUNNI KONSOOL UTF-8 KODEERINGUSSE ---
+# See rida parandab täpitähtede kuvamise teises arvutis!
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 # --- SEADISTUS ---
-# NB! Muutsin võtme nime "Väljund" -> "OutputFail", et vältida täpitähe probleeme koodis
+# NB! Muutujanimedes väldime täpitähti, aga tekstis (string) on need nüüd OK.
 $Failid = @{
     Eesnimed     = "Eesnimed.txt"
     Perenimed    = "Perenimed.txt"
@@ -57,7 +56,7 @@ function Get-RandomPassword {
 
 Clear-Host
 Write-Host "--- PAROOLI SEADISTUS ---" -ForegroundColor Cyan
-$GlobalPass = Read-Host "Sisesta staatiline parool KÕIGILE (või vajuta ENTER juhuslike paroolide jaoks)"
+$GlobalPass = Read-Host "Sisesta staatiline parool (vajuta ENTER juhuslike paroolide jaoks)"
 
 if (-not [string]::IsNullOrWhiteSpace($GlobalPass)) {
     Write-Host "Valitud režiim: Staatiline parool '$GlobalPass'" -ForegroundColor Yellow
@@ -97,7 +96,6 @@ $UserList = New-Object System.Collections.Generic.List[PSObject]
 
 # --- EKSPORT JA VÄLJUND ---
 
-# Kasutan nüüd $Failid.OutputFail
 $UserList | Export-Csv -Path $Failid.OutputFail -Delimiter ";" -NoTypeInformation -Encoding UTF8 -Force
 
 Write-Host "`n--------------------------------------------------------" -ForegroundColor Cyan
@@ -106,6 +104,7 @@ Write-Host "--------------------------------------------------------" -Foregroun
 
 foreach ($User in $UserList) {
     $DescShort = if ($User.Kirjeldus.Length -gt 10) { $User.Kirjeldus.Substring(0, 10) + "..." } else { $User.Kirjeldus }
-    Write-Host "Täisnimi: $($User.Eesnimi) $($User.Perenimi) | Kasutaja: $($User.Kasutajanimi) | Parool: $($User.Parool) | Info: $DescShort"
+    # Nüüd on siin ilusasti "Täisnimi" ja see peaks töötama
+    Write-Host "Nimi: $($User.Eesnimi) $($User.Perenimi) | Kasutaja: $($User.Kasutajanimi) | Parool: $($User.Parool) | Info: $DescShort"
 }
 Write-Host "--------------------------------------------------------" -ForegroundColor Gray
