@@ -171,7 +171,7 @@ while ($Jatka) {
                             Write-Host "  - Kodukaust kustutatud" -ForegroundColor Gray
                         }
                     }
-                    Write-Host "`nKõik valitud kasutajad on kustutatud!" -ForegroundColor Yellow
+                    Write-Host "`nValitud kasutajad on kustutatud!" -ForegroundColor Yellow
                     Start-Sleep 3
                 } else {
                     Write-Warning "Pole kedagi kustutada."
