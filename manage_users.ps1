@@ -3,7 +3,7 @@
     Loeb CSV faili ja voimaldab kasutajaid arvutisse lisada voi kustutada.
 .DESCRIPTION
     Universaalne skript (PowerShell 5.1 & 7.x).
-    Kustutamisel kaitseb praegust sisselogitud kasutajat.
+    Kustutamisel naitab KOIKI kasutajaid, valja arvatud praegust sisselogitud kasutajat.
 #>
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -19,14 +19,11 @@ if (-not $IsAdmin) {
 
 # --- 2. FAILIDE LUGEMINE ---
 $CsvFail = "new_users_accounts.csv"
-$CsvKasutajad = @()
-
 if (Test-Path $CsvFail) {
     $CsvAndmed = Import-Csv -Path $CsvFail -Delimiter ";" -Encoding UTF8
-    # Salvestame CSV-st saadud kasutajanimed eraldi nimekirja
-    $CsvKasutajad = $CsvAndmed.Kasutajanimi
 } else {
-    Write-Warning "CSV faili '$CsvFail' ei leitud. Kustutamisel naidatakse koiki tavakasutajaid."
+    Write-Warning "CSV faili '$CsvFail' ei leitud. Lisamine ei toota, kuid kustutamine tootab."
+    $CsvAndmed = @()
 }
 
 # --- PEATSÜKKEL (LOOP) ---
@@ -38,14 +35,14 @@ while ($Jatka) {
     Write-Host "Tuvastatud versioon: $($PSVersionTable.PSVersion)" -ForegroundColor Gray
     Write-Host "Vali tegevus:"
     Write-Host "[L] Lisa koik kasutajad failist"
-    Write-Host "[K] Kustuta uks kasutaja (CSV pohjal)"
+    Write-Host "[K] Kustuta uks kasutaja (Nae koiki)"
     Write-Host "[X] Katkesta / Lopeta too"
     
     $Valik = Read-Host "Sinu valik"
 
     # --- LISAMINE ---
     if ($Valik -match "^(l|L)$") {
-        if (-not $CsvAndmed) { Write-Warning "CSV fail puudub, ei saa lisada."; Start-Sleep 2; continue }
+        if ($CsvAndmed.Count -eq 0) { Write-Warning "CSV fail puudub voi on tuhi."; Start-Sleep 2; continue }
 
         Write-Host "`nAlustan kasutajate lisamist..." -ForegroundColor Yellow
         
@@ -69,7 +66,6 @@ while ($Jatka) {
                 Write-Host "OK (PS): Loodi kasutaja '$User'." -ForegroundColor Green
             }
             catch {
-                # Fallback to NET USER
                 try {
                     $Null = & net user $User $Pass /ADD /FULLNAME:"$FullName" /COMMENT:"$Desc" /LOGONPASSWORDCHG:YES 2>&1
                     if ($LASTEXITCODE -eq 0) {
@@ -83,14 +79,14 @@ while ($Jatka) {
         Read-Host
     }
 
-    # --- KUSTUTAMINE (UUENDATUD LOOGIKA) ---
+    # --- KUSTUTAMINE (UUENDATUD: Näitab kõiki peale iseenda) ---
     elseif ($Valik -match "^(k|K)$") {
         
         $KustutaJatka = $true
         
         while ($KustutaJatka) {
             Clear-Host
-            Write-Host "--- KUSTUTAMINE ---" -ForegroundColor Yellow
+            Write-Host "--- KUSTUTAMINE (Kõik kasutajad) ---" -ForegroundColor Yellow
             
             # 1. Leiame kõik süsteemi kasutajad
             $KõikKasutajad = @()
@@ -102,28 +98,17 @@ while ($Jatka) {
                     $_.Name -ne $env:USERNAME # VÄLISTAME PRAEGUSE KASUTAJA!
                 }
             } catch {
-                Write-Warning "Get-LocalUser ebaonnestus. Kasuta kasitsi sisestamist."
+                # Fallback CMD
+                Write-Warning "Get-LocalUser ei tootnud. Proovi nime sisestada kasitsi."
             }
             
-            # 2. Filtreerime: Näitame ainult neid, kes olid ka CSV failis (kui CSV on olemas)
-            #    Või kui CSV-d polnud, näitame kõiki peale enda.
-            $Kustutatavad = @()
-            
-            if ($CsvKasutajad.Count -gt 0) {
-                # Näita ainult neid, kes on päriselt arvutis olemas JA olid CSV-s
-                $Kustutatavad = $KõikKasutajad | Where-Object { $CsvKasutajad -contains $_.Name }
-            } else {
-                # Kui CSV puudub, näita kõiki peale iseenda
-                $Kustutatavad = $KõikKasutajad
-            }
-
-            if ($Kustutatavad.Count -gt 0) {
-                Write-Host "Leitud genereeritud kasutajad:"
-                for ($i=0; $i -lt $Kustutatavad.Count; $i++) {
-                    Write-Host "[$($i+1)] $($Kustutatavad[$i].Name)"
+            # 2. Näitame nimekirja
+            if ($KõikKasutajad.Count -gt 0) {
+                for ($i=0; $i -lt $KõikKasutajad.Count; $i++) {
+                    Write-Host "[$($i+1)] $($KõikKasutajad[$i].Name)"
                 }
             } else {
-                Write-Host "Ei leitud uhtegi CSV failist parit kasutajat (voi nimekiri on tuhi)."
+                Write-Host "Ei leitud uhtegi kustutatavat kasutajat."
             }
            
             Write-Host "[X] Katkesta ja mine tagasi"
@@ -136,14 +121,13 @@ while ($Jatka) {
             else {
                 $ValitudNimi = ""
                 # Number valik
-                if ($KustutaValik -match '^\d+$' -and $Kustutatavad.Count -gt 0) {
-                    if ([int]$KustutaValik -ge 1 -and [int]$KustutaValik -le $Kustutatavad.Count) {
-                        $ValitudNimi = $Kustutatavad[[int]$KustutaValik - 1].Name
+                if ($KustutaValik -match '^\d+$' -and $KõikKasutajad.Count -gt 0) {
+                    if ([int]$KustutaValik -ge 1 -and [int]$KustutaValik -le $KõikKasutajad.Count) {
+                        $ValitudNimi = $KõikKasutajad[[int]$KustutaValik - 1].Name
                     }
                 } 
-                # Nime valik
+                # Nime valik (käsitsi kirjutatud)
                 elseif ($KustutaValik.Length -gt 1) {
-                    # Lisakontroll: Ära luba kustutada iseennast, isegi kui nimi kirjutatakse käsitsi
                     if ($KustutaValik -eq $env:USERNAME) {
                         Write-Warning "Sa ei saa kustutada iseennast!"
                         Start-Sleep 2
@@ -161,6 +145,7 @@ while ($Jatka) {
                     } catch {
                         $Null = & net user $ValitudNimi /DELETE 2>&1
                         if ($LASTEXITCODE -eq 0) { Write-Host "Kasutaja konto kustutatud (CMD)." -ForegroundColor Green }
+                        else { Write-Error "Ei saanud kasutajat '$ValitudNimi' kustutada." }
                     }
 
                     $KoduKaust = "C:\Users\$ValitudNimi"
