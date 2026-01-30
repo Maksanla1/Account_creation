@@ -100,11 +100,11 @@ while ($Jatka) {
                 } catch { Write-Error "Kriitiline viga loomisel." }
             }
         }
-        Write-Host "`nTegevus lopetatud. Vajuta ENTER jatkamiseks..." -ForegroundColor Gray
+        Write-Host "`nKasutajad said edukalt lisatud. Vajuta ENTER jatkamiseks..." -ForegroundColor Gray
         Read-Host
     }
 
-    # --- KUSTUTAMINE (JÄÄB SAMAKS) ---
+    # --- KUSTUTAMINE (UUENDATUD: 'ALL DELETE' tugi) ---
     elseif ($Valik -match "^(k|K)$") {
         
         $KustutaJatka = $true
@@ -113,6 +113,7 @@ while ($Jatka) {
             Clear-Host
             Write-Host "--- KUSTUTAMINE ---" -ForegroundColor Yellow
             
+            # 1. Leiame kasutajad (v.a. admin ja ise)
             $KõikKasutajad = @()
             try {
                 $KõikKasutajad = Get-LocalUser | Where-Object { 
@@ -125,28 +126,69 @@ while ($Jatka) {
                 Write-Warning "Get-LocalUser ei tootnud. Proovi nime sisestada kasitsi."
             }
             
+            # 2. Näitame nimekirja
             if ($KõikKasutajad.Count -gt 0) {
                 for ($i=0; $i -lt $KõikKasutajad.Count; $i++) {
                     Write-Host "[$($i+1)] $($KõikKasutajad[$i].Name)"
                 }
             } else {
-                Write-Host "Ei leitud uhtegi kustutatavat kasutajat."
+                Write-Host "Ei leitud kustutatavat kasutajat."
             }
            
-            Write-Host "[X] Katkesta ja mine tagasi peamenuusse"
+            Write-Host "[X] Katkesta ja mine tagasi"
+            Write-Host "Kirjuta 'ALL' et kustutada nimekirjas olevad kasutajad korraga!" -ForegroundColor Red
 
-            $KustutaValik = Read-Host "`nSisesta number voi kasutaja nimi"
+            $KustutaValik = Read-Host "`nSisesta number, nimi voi 'ALL'"
 
+            # --- VALIK 1: KATKESTA ---
             if ($KustutaValik -match "^(x|X)$") {
                 $KustutaJatka = $false
             }
+            # --- VALIK 2: KUSTUTA KÕIK (ALL DELETE) ---
+            elseif ($KustutaValik -eq "ALL") {
+                if ($KõikKasutajad.Count -gt 0) {
+                    Write-Host "`nHOIATUS: Kustutan $($KõikKasutajad.Count) kasutajat..." -ForegroundColor Red
+                    Start-Sleep 2
+                    
+                    foreach ($Kasutaja in $KõikKasutajad) {
+                        $Nimi = $Kasutaja.Name
+                        Write-Host "Kustutan: $Nimi..."
+                        
+                        # Kustuta konto
+                        try {
+                            Remove-LocalUser -Name $Nimi -ErrorAction Stop
+                            Write-Host "  - Konto kustutatud" -ForegroundColor Green
+                        } catch {
+                            $Null = & net user $Nimi /DELETE 2>&1
+                            if ($LASTEXITCODE -eq 0) { Write-Host "  - Konto kustutatud (CMD)" -ForegroundColor Green }
+                            else { Write-Error "  - Viga konto kustutamisel" }
+                        }
+
+                        # Kustuta kaust
+                        $KoduKaust = "C:\Users\$Nimi"
+                        if (Test-Path $KoduKaust) {
+                            Remove-Item -Path $KoduKaust -Recurse -Force -ErrorAction SilentlyContinue
+                            Write-Host "  - Kodukaust kustutatud" -ForegroundColor Gray
+                        }
+                    }
+                    Write-Host "`nKõik valitud kasutajad on kustutatud!" -ForegroundColor Yellow
+                    Start-Sleep 3
+                } else {
+                    Write-Warning "Pole kedagi kustutada."
+                    Start-Sleep 2
+                }
+            }
+            # --- VALIK 3: ÜKSIK KUSTUTAMINE (Number või Nimi) ---
             else {
                 $ValitudNimi = ""
+                # Number valik
                 if ($KustutaValik -match '^\d+$' -and $KõikKasutajad.Count -gt 0) {
                     if ([int]$KustutaValik -ge 1 -and [int]$KustutaValik -le $KõikKasutajad.Count) {
                         $ValitudNimi = $KõikKasutajad[[int]$KustutaValik - 1].Name
                     }
-                } elseif ($KustutaValik.Length -gt 1) {
+                } 
+                # Nime valik
+                elseif ($KustutaValik.Length -gt 1) {
                     if ($KustutaValik -eq $env:USERNAME) {
                         Write-Warning "Sa ei saa kustutada iseennast!"
                         Start-Sleep 2
@@ -177,6 +219,7 @@ while ($Jatka) {
             }
         }
     }
+
 
     # --- KATKESTA ---
     elseif ($Valik -match "^(x|X)$") {
